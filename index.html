@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cursor Translator</title>
   <style>
     #translator-tooltip {
@@ -20,16 +20,45 @@
       z-index: 9999;
       display: none;
     }
+    #toggle-btn {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: #4caf50;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      z-index: 10000;
+    }
+    #toggle-btn.off {
+      background: #f44336;
+    }
   </style>
 </head>
 <body>
+  <button id="toggle-btn">ON</button>
   <div id="translator-tooltip"></div>
 
   <script>
     const tooltip = document.getElementById('translator-tooltip');
+    const toggleBtn = document.getElementById('toggle-btn');
+    let active = true;
     let lastSelection = '';
 
-    // Chiamata all'endpoint pubblico di Google Translate
+    // Attiva / disattiva traduzione
+    toggleBtn.addEventListener('click', () => {
+      active = !active;
+      toggleBtn.textContent = active ? 'ON' : 'OFF';
+      toggleBtn.classList.toggle('off', !active);
+      if (!active) {
+        hideTooltip();
+      }
+    });
+
+    // Funzione di traduzione tramite Google Translate pubblico
     async function translate(text) {
       const url = 'https://translate.googleapis.com/translate_a/single'
         + '?client=gtx'
@@ -42,7 +71,7 @@
       return data[0].map(seg => seg[0]).join('');
     }
 
-    // Mostra il tooltip in una posizione data
+    // Mostra tooltip alle coordinate specificate
     function showTooltip(x, y, msg) {
       tooltip.innerText = msg;
       tooltip.style.left = (x + 8) + 'px';
@@ -50,18 +79,18 @@
       tooltip.style.display = 'block';
     }
 
-    // Nasconde il tooltip
+    // Nasconde tooltip
     function hideTooltip() {
       tooltip.style.display = 'none';
       lastSelection = '';
     }
 
-    // Gestisce la selezione di testo
+    // Gestione selezione di testo
     async function handleSelection() {
+      if (!active) return;
       const sel = window.getSelection().toString().trim();
       if (!sel || sel === lastSelection) return;
       lastSelection = sel;
-
       try {
         const translation = await translate(sel);
         const range = window.getSelection().getRangeAt(0);
@@ -73,13 +102,13 @@
       }
     }
 
-    // Event listeners
+    // Event listeners per mouse e touch
     document.addEventListener('mouseup', handleSelection);
     document.addEventListener('touchend', handleSelection);
 
-    // Cliccare fuori o sul tooltip lo chiude
+    // Clic esterno chiude tooltip
     document.addEventListener('mousedown', (e) => {
-      if (!tooltip.contains(e.target)) hideTooltip();
+      if (!tooltip.contains(e.target) && e.target !== toggleBtn) hideTooltip();
     });
     tooltip.addEventListener('click', hideTooltip);
   </script>
