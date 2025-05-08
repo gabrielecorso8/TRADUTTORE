@@ -1,19 +1,22 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Cursor Translator Lite</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cursor Translator</title>
   <style>
     #translator-tooltip {
       position: absolute;
-      background: rgba(255,255,200,0.9);
-      padding: 4px 8px;
-      border-radius: 4px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      background: rgba(255,255,200,0.95);
+      padding: 6px 10px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       max-width: 300px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: Arial, sans-serif;
       font-size: 0.9rem;
-      line-height: 1.3;
+      line-height: 1.4;
       z-index: 9999;
       display: none;
     }
@@ -21,55 +24,64 @@
 </head>
 <body>
   <div id="translator-tooltip"></div>
-  <script>
-    async function translate(text) {
-      // Chiamata “non-ufficiale” all’endpoint di Google Translate
-      const res = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=it&dt=t&q='+encodeURIComponent(text));
-      const data = await res.json();
-      return data[0].map(segment => segment[0]).join('');
-    }
 
+  <script>
     const tooltip = document.getElementById('translator-tooltip');
     let lastSelection = '';
 
-    function showTooltip(x, y, msg) {
-      tooltip.textContent = msg;
-      tooltip.style.left = (x+5) + 'px';
-      tooltip.style.top  = (y+5) + 'px';
-      tooltip.style.display = 'block';
-    }
-    function hideTooltip() {
-      tooltip.style.display = 'none';
+    // Chiamata all'endpoint pubblico di Google Translate
+    async function translate(text) {
+      const url = 'https://translate.googleapis.com/translate_a/single'
+        + '?client=gtx'
+        + '&sl=auto'
+        + '&tl=it'
+        + '&dt=t'
+        + '&q=' + encodeURIComponent(text);
+      const res = await fetch(url);
+      const data = await res.json();
+      return data[0].map(seg => seg[0]).join('');
     }
 
-    document.addEventListener('mouseup', async (e) => {
+    // Mostra il tooltip in una posizione data
+    function showTooltip(x, y, msg) {
+      tooltip.innerText = msg;
+      tooltip.style.left = (x + 8) + 'px';
+      tooltip.style.top  = (y + 8) + 'px';
+      tooltip.style.display = 'block';
+    }
+
+    // Nasconde il tooltip
+    function hideTooltip() {
+      tooltip.style.display = 'none';
+      lastSelection = '';
+    }
+
+    // Gestisce la selezione di testo
+    async function handleSelection() {
       const sel = window.getSelection().toString().trim();
-      if (sel && sel !== lastSelection) {
-        lastSelection = sel;
-        try {
-          const t = await translate(sel);
-          const rect = window.getSelection().getRangeAt(0).getBoundingClientRect();
-          showTooltip(rect.right + window.scrollX, rect.bottom + window.scrollY, t);
-        } catch {
-          hideTooltip();
-        }
+      if (!sel || sel === lastSelection) return;
+      lastSelection = sel;
+
+      try {
+        const translation = await translate(sel);
+        const range = window.getSelection().getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        showTooltip(rect.right + window.scrollX, rect.bottom + window.scrollY, translation);
+      } catch (err) {
+        console.error('Traduzione fallita', err);
+        hideTooltip();
       }
+    }
+
+    // Event listeners
+    document.addEventListener('mouseup', handleSelection);
+    document.addEventListener('touchend', handleSelection);
+
+    // Cliccare fuori o sul tooltip lo chiude
+    document.addEventListener('mousedown', (e) => {
+      if (!tooltip.contains(e.target)) hideTooltip();
     });
-    document.addEventListener('mousedown', hideTooltip);
-    // Su mobile catturiamo anche touchend
-    document.addEventListener('touchend', async (e) => {
-      const sel = window.getSelection().toString().trim();
-      if (sel && sel !== lastSelection) {
-        lastSelection = sel;
-        try {
-          const t = await translate(sel);
-          const rect = window.getSelection().getRangeAt(0).getBoundingClientRect();
-          showTooltip(rect.right + window.scrollX, rect.bottom + window.scrollY, t);
-        } catch {
-          hideTooltip();
-        }
-      }
-    });
+    tooltip.addEventListener('click', hideTooltip);
   </script>
 </body>
 </html>
